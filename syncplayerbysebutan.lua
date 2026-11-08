@@ -4,6 +4,7 @@ local TweenService = game:GetService("TweenService")
 local UIS = game:GetService("UserInputService")
 local lp = Players.LocalPlayer
 
+local TITLE = "SYNC PLAYER BY SEBUTAN"
 local SMOOTH = 30
 local S = {Target = nil, Side = "Behind", Dist = 4, On = false}
 local offsets = {
@@ -246,6 +247,8 @@ gui.Parent = parentGui
 local FONT, FONT_B = Enum.Font.GothamMedium, Enum.Font.GothamBold
 local WHITE = Color3.new(1, 1, 1)
 local GREEN, RED = Color3.fromRGB(52, 199, 89), Color3.fromRGB(255, 69, 58)
+local GREY = Color3.fromRGB(140, 145, 160)
+local SUB = Color3.fromRGB(190, 196, 212)
 local quick = TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 local smooth = TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 
@@ -256,7 +259,6 @@ local function corner(o, r)
     return c
 end
 
--- tepi kaca: terang di pojok kiri atas, pudar ke kanan bawah
 local function glassEdge(o, thickness, alpha)
     local s = Instance.new("UIStroke")
     s.Color = WHITE
@@ -276,7 +278,6 @@ local function glassEdge(o, thickness, alpha)
     return s
 end
 
--- permukaan kaca: tint gelap tembus pandang + kilap gradient
 local function glassBody(o, base)
     o.BackgroundColor3 = WHITE
     o.BackgroundTransparency = base or 0.3
@@ -330,7 +331,6 @@ local function btn(parent, props)
     return b
 end
 
--- efek tekan pada tombol berlatar
 local function pressFx(b, target)
     local base = target.BackgroundTransparency
     b.MouseButton1Down:Connect(function()
@@ -341,75 +341,100 @@ local function pressFx(b, target)
     b.MouseLeave:Connect(up)
 end
 
--- drag (mouse + touch); onTap dipanggil kalau cuma di-tap
 local function makeDraggable(handle, target, onTap)
-    local dragging, moved, startIn, startPos
+    local dragging, moved = false, false
+    local activeInput, startIn, startPos
+
     handle.InputBegan:Connect(function(i)
-        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-            dragging, moved = true, false
-            startIn, startPos = i.Position, target.Position
-            i.Changed:Connect(function()
-                if i.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                    if not moved and onTap then onTap() end
-                end
-            end)
+        if i.UserInputType ~= Enum.UserInputType.MouseButton1
+            and i.UserInputType ~= Enum.UserInputType.Touch then return end
+        local p = i.Position
+        local ap, as = handle.AbsolutePosition, handle.AbsoluteSize
+        if p.X < ap.X or p.X > ap.X + as.X or p.Y < ap.Y or p.Y > ap.Y + as.Y then return end
+        dragging, moved = true, false
+        activeInput = i
+        startIn = Vector2.new(p.X, p.Y)
+        startPos = target.Position
+    end)
+
+    UIS.InputChanged:Connect(function(i)
+        if not dragging then return end
+        if i.UserInputType == Enum.UserInputType.MouseMovement or i == activeInput then
+            local d = Vector2.new(i.Position.X, i.Position.Y) - startIn
+            if d.Magnitude > 8 then moved = true end
+            if moved then
+                target.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X,
+                    startPos.Y.Scale, startPos.Y.Offset + d.Y)
+            end
         end
     end)
-    UIS.InputChanged:Connect(function(i)
-        if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
-            local d = i.Position - startIn
-            if d.Magnitude > 6 then moved = true end
-            if moved then
-                target.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
-            end
+
+    UIS.InputEnded:Connect(function(i)
+        if dragging and i == activeInput then
+            dragging = false
+            activeInput = nil
+            if not moved and onTap then onTap() end
         end
     end)
 end
 
 -- ============ panel utama ============
+local PAD = 16
 local panel = Instance.new("CanvasGroup")
 panel.Name = "Panel"
-panel.Size = UDim2.fromOffset(260, 294)
+panel.Size = UDim2.fromOffset(300, 362)
 panel.Position = UDim2.fromOffset(20, 90)
 panel.BorderSizePixel = 0
-panel.GroupTransparency = 0
+panel.GroupTransparency = 1
+panel.Visible = false
 panel.Parent = gui
 glassBody(panel, 0.3)
 corner(panel, UDim.new(0, 26))
 glassEdge(panel, 1.4, 0.3)
 local pScale = Instance.new("UIScale", panel)
+pScale.Scale = 0.88
 
 -- header
 local header = Instance.new("Frame")
-header.Size = UDim2.new(1, 0, 0, 46)
+header.Size = UDim2.new(1, 0, 0, 54)
 header.BackgroundTransparency = 1
 header.Parent = panel
 
 local dot = Instance.new("Frame")
 dot.Size = UDim2.fromOffset(9, 9)
-dot.Position = UDim2.fromOffset(18, 18)
-dot.BackgroundColor3 = Color3.fromRGB(140, 145, 160)
+dot.Position = UDim2.fromOffset(PAD, 23)
+dot.BackgroundColor3 = GREY
 dot.BorderSizePixel = 0
 dot.Parent = header
 corner(dot, UDim.new(1, 0))
 
-label(header, {Text = "Follow", Font = FONT_B, TextSize = 16, Size = UDim2.fromOffset(100, 46),
-    Position = UDim2.fromOffset(34, 0), TextXAlignment = Enum.TextXAlignment.Left})
+label(header, {Text = TITLE, Font = FONT_B, TextSize = 12, Size = UDim2.new(1, -140, 0, 20),
+    Position = UDim2.fromOffset(PAD + 18, 9), TextXAlignment = Enum.TextXAlignment.Left,
+    TextTruncate = Enum.TextTruncate.AtEnd})
+label(header, {Text = "Ikuti gerakan & animasi player", TextSize = 10, TextColor3 = SUB,
+    Size = UDim2.new(1, -140, 0, 14), Position = UDim2.fromOffset(PAD + 18, 28),
+    TextXAlignment = Enum.TextXAlignment.Left})
 
 local function headBtn(txt, xOff)
-    local bg = softBox(header, {Size = UDim2.fromOffset(28, 28), Position = UDim2.new(1, xOff, 0, 9)})
+    local bg = softBox(header, {Size = UDim2.fromOffset(28, 28), Position = UDim2.new(1, xOff, 0, 13)})
     corner(bg, UDim.new(1, 0))
     local b = btn(bg, {Size = UDim2.fromScale(1, 1), Text = txt, TextSize = 15})
     pressFx(b, bg)
     return b
 end
-local hideBtn = headBtn("–", -70)
-local closeBtn = headBtn("✕", -36)
+local hideBtn = headBtn("–", -78)
+local closeBtn = headBtn("✕", -44)
 closeBtn.TextSize = 12
 
--- input nama
-local boxBg = softBox(panel, {Size = UDim2.new(1, -32, 0, 34), Position = UDim2.fromOffset(16, 54)})
+local function caption(text, y)
+    label(panel, {Text = text, Font = FONT_B, TextSize = 10, TextColor3 = SUB,
+        Size = UDim2.new(1, -PAD * 2, 0, 14), Position = UDim2.fromOffset(PAD, y),
+        TextXAlignment = Enum.TextXAlignment.Left})
+end
+
+-- TARGET
+caption("TARGET", 60)
+local boxBg = softBox(panel, {Size = UDim2.new(1, -PAD * 2, 0, 34), Position = UDim2.fromOffset(PAD, 76)})
 local box = Instance.new("TextBox")
 box.Size = UDim2.new(1, -20, 1, 0)
 box.Position = UDim2.fromOffset(10, 0)
@@ -418,19 +443,19 @@ box.Font = FONT
 box.TextSize = 13
 box.TextColor3 = WHITE
 box.PlaceholderText = "Nama / display name player"
-box.PlaceholderColor3 = Color3.fromRGB(190, 195, 210)
+box.PlaceholderColor3 = Color3.fromRGB(170, 176, 195)
 box.Text = ""
 box.ClearTextOnFocus = false
 box.TextXAlignment = Enum.TextXAlignment.Left
 box.Parent = boxBg
 
--- pilih player berikutnya
-local pickBg = softBox(panel, {Size = UDim2.new(1, -32, 0, 30), Position = UDim2.fromOffset(16, 94)})
+local pickBg = softBox(panel, {Size = UDim2.new(1, -PAD * 2, 0, 30), Position = UDim2.fromOffset(PAD, 116)})
 local pick = btn(pickBg, {Size = UDim2.fromScale(1, 1), Text = "Pilih player berikutnya  ›", Font = FONT, TextSize = 12})
 pressFx(pick, pickBg)
 
--- segmented control
-local segBg = softBox(panel, {Size = UDim2.new(1, -32, 0, 36), Position = UDim2.fromOffset(16, 132)})
+-- ARAH
+caption("ARAH", 158)
+local segBg = softBox(panel, {Size = UDim2.new(1, -PAD * 2, 0, 36), Position = UDim2.fromOffset(PAD, 174)})
 local selector = Instance.new("Frame")
 selector.Size = UDim2.new(1 / 3, -4, 1, -6)
 selector.BackgroundColor3 = WHITE
@@ -454,8 +479,9 @@ for i, s in ipairs(sides) do
 end
 selector.Position = UDim2.new((sideIndex() - 1) / 3, 2, 0, 3)
 
--- stepper jarak
-local stepBg = softBox(panel, {Size = UDim2.new(1, -32, 0, 36), Position = UDim2.fromOffset(16, 176)})
+-- JARAK
+caption("JARAK", 220)
+local stepBg = softBox(panel, {Size = UDim2.new(1, -PAD * 2, 0, 36), Position = UDim2.fromOffset(PAD, 236)})
 local minus = btn(stepBg, {Size = UDim2.fromOffset(44, 36), Text = "−", TextSize = 20})
 local plus = btn(stepBg, {Size = UDim2.fromOffset(44, 36), Position = UDim2.new(1, -44, 0, 0), Text = "+", TextSize = 20})
 local distLabel = label(stepBg, {Size = UDim2.new(1, -88, 1, 0), Position = UDim2.fromOffset(44, 0), Text = "", TextSize = 13})
@@ -464,8 +490,8 @@ plus.MouseButton1Click:Connect(function() S.Dist = math.clamp(S.Dist + 1, 1, 30)
 
 -- tombol mulai
 local startBg = Instance.new("Frame")
-startBg.Size = UDim2.new(1, -32, 0, 42)
-startBg.Position = UDim2.fromOffset(16, 222)
+startBg.Size = UDim2.new(1, -PAD * 2, 0, 42)
+startBg.Position = UDim2.fromOffset(PAD, 286)
 startBg.BackgroundColor3 = GREEN
 startBg.BackgroundTransparency = 0.15
 startBg.BorderSizePixel = 0
@@ -475,21 +501,22 @@ glassEdge(startBg, 1.2, 0.4)
 local startBtn = btn(startBg, {Size = UDim2.fromScale(1, 1), Text = "Mulai", TextSize = 15})
 pressFx(startBtn, startBg)
 
-local status = label(panel, {Size = UDim2.new(1, -32, 0, 18), Position = UDim2.fromOffset(16, 270),
-    Text = "", TextSize = 11, TextColor3 = Color3.fromRGB(200, 205, 220), TextTruncate = Enum.TextTruncate.AtEnd})
+local status = label(panel, {Size = UDim2.new(1, -PAD * 2, 0, 18), Position = UDim2.fromOffset(PAD, 336),
+    Text = "", TextSize = 11, TextColor3 = SUB, TextTruncate = Enum.TextTruncate.AtEnd})
 
 -- ============ bubble hide/show ============
 local bubble = Instance.new("Frame")
 bubble.Size = UDim2.fromOffset(46, 46)
 bubble.Position = UDim2.fromOffset(20, 36)
 bubble.BorderSizePixel = 0
+bubble.Visible = false
 bubble.Parent = gui
 glassBody(bubble, 0.25)
 corner(bubble, UDim.new(1, 0))
 local bubbleEdge = glassEdge(bubble, 1.4, 0.25)
-label(bubble, {Size = UDim2.fromScale(1, 1), Text = "F", Font = FONT_B, TextSize = 18})
+label(bubble, {Size = UDim2.fromScale(1, 1), Text = "S", Font = FONT_B, TextSize = 18})
 
-local open = true
+local open = false
 local function setOpen(v)
     open = v
     if v then
@@ -509,7 +536,7 @@ makeDraggable(bubble, bubble, function() setOpen(not open) end)
 makeDraggable(header, panel)
 
 UIS.InputBegan:Connect(function(i, gp)
-    if not gp and i.KeyCode == Enum.KeyCode.RightShift then setOpen(not open) end
+    if not gp and i.KeyCode == Enum.KeyCode.RightShift and bubble.Visible then setOpen(not open) end
 end)
 
 closeBtn.MouseButton1Click:Connect(function() stop() gui:Destroy() end)
@@ -517,16 +544,15 @@ closeBtn.MouseButton1Click:Connect(function() stop() gui:Destroy() end)
 -- ============ state ============
 onState = function()
     local t = S.Target and S.Target.DisplayName or "-"
-    distLabel.Text = "Jarak  " .. S.Dist .. " stud"
+    distLabel.Text = S.Dist .. " stud"
     status.Text = (S.On and "Mengikuti: " or "Target: ") .. t
     TweenService:Create(selector, quick, {Position = UDim2.new((sideIndex() - 1) / 3, 2, 0, 3)}):Play()
     for i in ipairs(sides) do
         segLabels[i].TextTransparency = (i == sideIndex()) and 0 or 0.35
     end
-    local col = S.On and RED or GREEN
     startBtn.Text = S.On and "Berhenti" or "Mulai"
-    TweenService:Create(startBg, quick, {BackgroundColor3 = col}):Play()
-    TweenService:Create(dot, quick, {BackgroundColor3 = S.On and GREEN or Color3.fromRGB(140, 145, 160)}):Play()
+    TweenService:Create(startBg, quick, {BackgroundColor3 = S.On and RED or GREEN}):Play()
+    TweenService:Create(dot, quick, {BackgroundColor3 = S.On and GREEN or GREY}):Play()
     bubbleEdge.Color = S.On and GREEN or WHITE
 end
 
@@ -556,3 +582,63 @@ startBtn.MouseButton1Click:Connect(function()
 end)
 
 onState()
+
+-- =====================================================
+-- LOADING SCREEN
+-- =====================================================
+local loader = Instance.new("CanvasGroup")
+loader.AnchorPoint = Vector2.new(0.5, 0.5)
+loader.Size = UDim2.fromOffset(320, 150)
+loader.Position = UDim2.fromScale(0.5, 0.5)
+loader.BorderSizePixel = 0
+loader.GroupTransparency = 1
+loader.Parent = gui
+glassBody(loader, 0.25)
+corner(loader, UDim.new(0, 28))
+glassEdge(loader, 1.4, 0.25)
+local lScale = Instance.new("UIScale", loader)
+lScale.Scale = 0.9
+
+label(loader, {Text = TITLE, Font = FONT_B, TextSize = 16, Size = UDim2.new(1, -24, 0, 24),
+    Position = UDim2.fromOffset(12, 28)})
+local lStatus = label(loader, {Text = "Memulai...", TextSize = 12, TextColor3 = SUB,
+    Size = UDim2.new(1, -24, 0, 18), Position = UDim2.fromOffset(12, 58)})
+
+local barBg = softBox(loader, {Size = UDim2.new(1, -56, 0, 8), Position = UDim2.fromOffset(28, 94)})
+corner(barBg, UDim.new(1, 0))
+local barFill = Instance.new("Frame")
+barFill.Size = UDim2.fromScale(0, 1)
+barFill.BackgroundColor3 = GREEN
+barFill.BorderSizePixel = 0
+barFill.Parent = barBg
+corner(barFill, UDim.new(1, 0))
+local lPct = label(loader, {Text = "0%", Font = FONT_B, TextSize = 11, TextColor3 = SUB,
+    Size = UDim2.new(1, -24, 0, 16), Position = UDim2.fromOffset(12, 114)})
+
+task.spawn(function()
+    TweenService:Create(loader, smooth, {GroupTransparency = 0}):Play()
+    TweenService:Create(lScale, smooth, {Scale = 1}):Play()
+    task.wait(0.35)
+
+    local steps = {
+        {"Menyiapkan modul...", 0.25},
+        {"Memuat sistem animasi...", 0.55},
+        {"Menyiapkan tampilan...", 0.85},
+        {"Selesai!", 1},
+    }
+    for _, st in ipairs(steps) do
+        lStatus.Text = st[1]
+        TweenService:Create(barFill, TweenInfo.new(0.45, Enum.EasingStyle.Quint), {Size = UDim2.fromScale(st[2], 1)}):Play()
+        lPct.Text = math.floor(st[2] * 100) .. "%"
+        task.wait(0.55)
+    end
+    task.wait(0.2)
+
+    TweenService:Create(loader, smooth, {GroupTransparency = 1}):Play()
+    TweenService:Create(lScale, smooth, {Scale = 1.06}):Play()
+    task.wait(0.35)
+    loader:Destroy()
+
+    bubble.Visible = true
+    setOpen(true)
+end)
