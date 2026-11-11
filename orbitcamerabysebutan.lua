@@ -150,7 +150,7 @@ end
 local root = new("Frame", {
     Name = "Root",
     Size = UDim2.fromOffset(0, 0),
-    Position = UDim2.new(0.5, -130, 0.5, -127),
+    Position = UDim2.new(0.5, -130, 0.5, -107),
     BackgroundTransparency = 1,
     Parent = gui,
 })
@@ -158,7 +158,7 @@ local root = new("Frame", {
 -- Window utama
 local main = new("Frame", {
     Name = "Main",
-    Size = UDim2.fromOffset(260, 254),
+    Size = UDim2.fromOffset(260, 214),
     Position = UDim2.fromOffset(0, 0),
     BackgroundColor3 = Color3.fromRGB(22, 24, 32),
     BackgroundTransparency = 0.45,
@@ -269,49 +269,10 @@ leftBtn.MouseButton1Click:Connect(function() setDirection(1) end)
 rightBtn.MouseButton1Click:Connect(function() setDirection(-1) end)
 leftBtn.TextColor3 = DARK -- default: kiri
 
--- Segmented control mode (CFrame / Mouse)
-local modeSeg = new("Frame", {
-    Name = "Mode",
-    Size = UDim2.new(1, -36, 0, 34),
-    Position = UDim2.fromOffset(18, 96),
-    BackgroundColor3 = WHITE,
-    BackgroundTransparency = 0.85,
-    BorderSizePixel = 0,
-    Parent = main,
-}, { corner(17), stroke(0.75, 1) })
-
-local modeInd = new("Frame", {
-    Size = UDim2.new(0.5, -4, 1, -4),
-    Position = UDim2.fromOffset(2, 2),
-    BackgroundColor3 = WHITE,
-    BackgroundTransparency = 0.12,
-    BorderSizePixel = 0,
-    Parent = modeSeg,
-}, { corner(15) })
-
-local function modeButton(text, xScale)
-    return new("TextButton", {
-        Size = UDim2.new(0.5, 0, 1, 0),
-        Position = UDim2.fromScale(xScale, 0),
-        BackgroundTransparency = 1,
-        AutoButtonColor = false,
-        Text = text,
-        TextSize = 13,
-        Font = Enum.Font.GothamMedium,
-        TextColor3 = WHITE,
-        ZIndex = 2,
-        Parent = modeSeg,
-    })
-end
-
-local cframeBtn = modeButton("Mode CFrame", 0)
-local mouseBtn = modeButton("Mode Mouse", 0.5)
-cframeBtn.TextColor3 = DARK
-
 -- Slider speed
 local speedLabel = new("TextLabel", {
     Size = UDim2.new(1, -36, 0, 18),
-    Position = UDim2.fromOffset(18, 142),
+    Position = UDim2.fromOffset(18, 100),
     BackgroundTransparency = 1,
     Text = "Kecepatan: " .. speed .. "°/s",
     TextColor3 = Color3.fromRGB(255, 255, 255),
@@ -324,7 +285,7 @@ local speedLabel = new("TextLabel", {
 local sliderHit = new("Frame", {
     Name = "SliderHit",
     Size = UDim2.new(1, -36, 0, 28),
-    Position = UDim2.fromOffset(18, 162),
+    Position = UDim2.fromOffset(18, 120),
     BackgroundTransparency = 1,
     Active = true,
     Parent = main,
@@ -399,7 +360,7 @@ local RED = Color3.fromRGB(255, 69, 58)
 local startBtn = new("TextButton", {
     Name = "StartStop",
     Size = UDim2.new(1, -36, 0, 40),
-    Position = UDim2.fromOffset(18, 200),
+    Position = UDim2.fromOffset(18, 158),
     BackgroundColor3 = GREEN,
     BackgroundTransparency = 0.1,
     AutoButtonColor = false,
@@ -413,14 +374,9 @@ local startBtn = new("TextButton", {
 ----------------------------------------------------------------
 -- Logic kamera
 ----------------------------------------------------------------
-local mode = "cframe"
-local mmr, m2p, m2r = mousemoverel, mouse2press, mouse2release
-local hasMouse = mmr ~= nil and m2p ~= nil and m2r ~= nil
-local mouseAcc = 0
-
--- MODE CFRAME: kamera tetap di mode Custom (default Roblox), jadi tetap
--- ngikutin karakter. Tiap frame kamera diputar mengelilingi Focus.
-local function stepCFrame(dt)
+-- Kamera tetap di mode Custom (default Roblox), jadi tetap ngikutin
+-- karakter. Tiap frame kita cuma putar kameranya mengelilingi Focus.
+local function step(dt)
     local cam = workspace.CurrentCamera
     if not cam then return end
     local focus = cam.Focus.Position
@@ -428,48 +384,11 @@ local function stepCFrame(dt)
     cam.CFrame = CFrame.new(focus) * rot * CFrame.new(-focus) * cam.CFrame
 end
 
--- MODE MOUSE: tahan klik kanan + geser mouse ke samping (simulasi input).
--- Konversi derajat -> pixel itu perkiraan (~0.25 derajat per pixel).
-local function stepMouse(dt)
-    local sens = 1
-    pcall(function()
-        sens = UserSettings():GetService("UserGameSettings").MouseSensitivity
-    end)
-    if sens <= 0 then sens = 1 end
-    mouseAcc = mouseAcc + (-direction) * (speed * dt) / (0.25 * sens)
-    local whole = mouseAcc >= 0 and math.floor(mouseAcc) or math.ceil(mouseAcc)
-    if whole ~= 0 then
-        pcall(mmr, whole, 0)
-        mouseAcc = mouseAcc - whole
-    end
-end
-
-local function runningText()
-    return mode == "mouse" and "Stop (K)" or "Stop"
-end
-
-local function flash(text)
-    startBtn.Text = text
-    task.delay(1.6, function()
-        if startBtn.Parent then
-            startBtn.Text = running and runningText() or "Start"
-        end
-    end)
-end
-
 local function start()
     if running then return end
-    if mode == "mouse" then
-        if not hasMouse then flash("Mouse gak support") return end
-        running = true
-        mouseAcc = 0
-        pcall(m2p)
-        RunService:BindToRenderStep(BIND_NAME, Enum.RenderPriority.Camera.Value + 1, stepMouse)
-    else
-        running = true
-        RunService:BindToRenderStep(BIND_NAME, Enum.RenderPriority.Camera.Value + 1, stepCFrame)
-    end
-    startBtn.Text = runningText()
+    running = true
+    RunService:BindToRenderStep(BIND_NAME, Enum.RenderPriority.Camera.Value + 1, step)
+    startBtn.Text = "Stop"
     tween(startBtn, { BackgroundColor3 = RED })
 end
 
@@ -477,40 +396,9 @@ local function stop()
     if not running then return end
     running = false
     pcall(function() RunService:UnbindFromRenderStep(BIND_NAME) end)
-    if mode == "mouse" and hasMouse then pcall(m2r) end
     startBtn.Text = "Start"
     tween(startBtn, { BackgroundColor3 = GREEN })
 end
-
-local function setMode(m)
-    if m == "mouse" and not hasMouse then
-        flash("Mouse gak support")
-        return
-    end
-    if running then stop() end
-    mode = m
-    if m == "cframe" then
-        tween(modeInd, { Position = UDim2.fromOffset(2, 2) })
-        tween(cframeBtn, { TextColor3 = DARK })
-        tween(mouseBtn, { TextColor3 = WHITE })
-    else
-        tween(modeInd, { Position = UDim2.new(0.5, 2, 0, 2) })
-        tween(cframeBtn, { TextColor3 = WHITE })
-        tween(mouseBtn, { TextColor3 = DARK })
-    end
-end
-
-cframeBtn.MouseButton1Click:Connect(function() setMode("cframe") end)
-mouseBtn.MouseButton1Click:Connect(function() setMode("mouse") end)
-
--- Hotkey K = start/stop (penting buat mode Mouse: pas klik kanan
--- ditahan, kursor kekunci jadi tombol Stop gak bisa diklik)
-UIS.InputBegan:Connect(function(input, gp)
-    if gp then return end
-    if input.KeyCode == Enum.KeyCode.K then
-        if running then stop() else start() end
-    end
-end)
 
 startBtn.MouseButton1Click:Connect(function()
     if running then stop() else start() end
