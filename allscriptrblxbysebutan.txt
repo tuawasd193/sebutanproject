@@ -1,0 +1,5 @@
+sync player by sebutan:  loadstring(game:HttpGet("https://raw.githubusercontent.com/tuawasd193/sebutanproject/refs/heads/main/syncplayerbysebutan.lua"))()
+
+zoomify for roblox by sebutan:  loadstring(game:HttpGet("https://raw.githubusercontent.com/tuawasd193/sebutanproject/refs/heads/main/zoomifyforrobloxbysebutan.lua"))()
+
+orbit camera by sebutan:  loadstring(game:HttpGet("https://raw.githubusercontent.com/tuawasd193/sebutanproject/refs/heads/main/orbitcamerabysebutan.lua"))()
